@@ -77,19 +77,29 @@ def analyze_and_export_csv(comment_list, output_file="analysis_results.csv", bat
             print(f"เกิดข้อผิดพลาดใน Batch {current_batch_num}: {e}")
 
     # 4. เขียนข้อมูลสรุปสุดท้ายลงไฟล์ CSV
-    print(f"กำลังบันทึกผลลัพธ์ลงไฟล์ {output_file}...")
+    print(f"กำลังคำนวณสัดส่วนและบันทึกผลลัพธ์ลงไฟล์ {output_file}...")
+    
+    # คำนวณหาจำนวนคอมเมนต์รวมทั้งหมด (Grand Total)
+    total_comments = sum(data['total_count'] for data in final_results.values())
+
     with open(output_file, mode='w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['Category', 'Summary (Combined)', 'Count'])
+        # เปลี่ยนหัวข้อคอลัมน์สุดท้ายเป็น Percentage
+        writer.writerow(['Category', 'Summary (Combined)', 'Percentage (%)'])
 
         for category, data in final_results.items():
-            # รวมสรุปของแต่ละ Batch เข้าด้วยกัน (ลบสรุปที่ซ้ำกันออกเพื่อความสะอาด)
+            # รวมสรุปของแต่ละ Batch
             unique_summaries = list(set(data['summaries']))
             combined_summary = " | ".join(unique_summaries)
             
-            writer.writerow([category, combined_summary, data['total_count']])
+            # คำนวณเปอร์เซ็นต์ (ป้องกันการหารด้วยศูนย์ด้วย if)
+            percentage = (data['total_count'] / total_comments * 100) if total_comments > 0 else 0
+            
+            # บันทึกลง CSV โดยปัดเศษทศนิยม 2 ตำแหน่ง
+            writer.writerow([category, combined_summary, f"{percentage:.2f}%"])
 
-    print(f"\nวิเคราะห์เสร็จสิ้น! บันทึกไฟล์เรียบร้อยแล้ว")
+    print(f"\nวิเคราะห์เสร็จสิ้น! รวมคอมเมนต์ทั้งสิ้น {total_comments} ข้อความ")
+    print(f"บันทึกสัดส่วนเปอร์เซ็นต์ลงไฟล์เรียบร้อยแล้ว")
 
 if __name__ == "__main__":
     comments = [
