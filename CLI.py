@@ -1,5 +1,5 @@
 from Fetch import Fetch
-from Analytic2 import analyze_and_export_csv  as analyze
+from Analytic import analyze_and_export_csv  as analyze
 from Extract import get_comments_from_csv as get_comment
 
 API_KEY = "AIzaSyARIbA6FhzK7Eg1rVWeI_pQM2VaiTdQc9o"
