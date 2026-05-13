@@ -104,6 +104,6 @@ def Fetch(api_key, youtube_url, file_name="youtube_comments.csv"):
         print(f"เกิดข้อผิดพลาด: {str(e)}")
 
 if __name__ == "__main__":
-    API_KEY = "AIzaSyARIbA6FhzK7Eg1rVWeI_pQM2VaiTdQc9o"
+    API_KEY = ""
     Youtube_Link = "https://www.youtube.com/watch?v=sDwC-D0S7M0"
     print(Fetch(API_KEY,Youtube_Link))
