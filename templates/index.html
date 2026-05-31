@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comment Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Noto+Sans+Thai:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141416;
+    --surface2: #1c1c1f;
+    --border: #2a2a2e;
+    --border-bright: #3a3a40;
+    --text: #e8e8ec;
+    --text-muted: #6b6b75;
+    --text-dim: #3d3d45;
+    --accent: #ff3c3c;
+    --accent2: #ff7c3c;
+    --accent3: #ffc93c;
+    --glow: rgba(255, 60, 60, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', 'Noto Sans Thai', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 900px;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .yt-icon {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 24px var(--glow);
+  }
+  .yt-icon svg { width: 22px; height: 22px; fill: white; }
+  .header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px; font-style: italic;
+    letter-spacing: -0.5px;
+  }
+  .header-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border-bright), transparent);
+  }
+
+  /* ── CONTROL BAR ── */
+  .control-bar {
+    display: flex; gap: 10px;
+    margin-bottom: 32px;
+    align-items: stretch;
+  }
+  .url-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .url-input::placeholder { color: var(--text-dim); }
+  .url-input:focus { border-color: var(--border-bright); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+  .url-input.has-value { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+
+  .model-wrapper { position: relative; }
+  .model-select {
+    appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 36px 12px 14px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer; outline: none;
+    transition: border-color 0.2s;
+    height: 100%;
+  }
+  .model-select:focus { border-color: var(--border-bright); }
+  .model-wrapper::after {
+    content: '⌄';
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none; font-size: 14px;
+  }
+
+  .submit-btn {
+    width: 44px;
+    background: var(--accent); border: none;
+    border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 0 20px var(--glow);
+    opacity: 0; pointer-events: none;
+    transform: scale(0.8);
+  }
+  .submit-btn.visible {
+    opacity: 1; pointer-events: auto; transform: scale(1);
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .submit-btn:hover { background: #ff5555; box-shadow: 0 0 32px rgba(255,60,60,0.35); }
+  .submit-btn:active { transform: scale(0.95); }
+  .submit-btn svg { width: 18px; height: 18px; fill: none; stroke: white; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── KEY WARNING BANNER ── */
+  .key-warning {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 193, 60, 0.08);
+    border: 1px solid rgba(255, 193, 60, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #ffc93c;
+  }
+  .key-warning.visible { display: flex; }
+  .key-warning-dot { width: 6px; height: 6px; border-radius: 50%; background: #ffc93c; flex-shrink: 0; }
+  .key-warning a { color: #ffc93c; text-decoration: underline; cursor: pointer; }
+
+  /* ── LOADING ── */
+  .loading-area {
+    display: none; flex-direction: column;
+    align-items: center; gap: 20px;
+    padding: 80px 0;
+  }
+  .loading-area.active { display: flex; }
+
+  .spinner { width: 48px; height: 48px; position: relative; }
+  .spinner::before, .spinner::after {
+    content: ''; position: absolute; inset: 0;
+    border-radius: 50%; border: 2px solid transparent;
+  }
+  .spinner::before { border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+  .spinner::after  { border-bottom-color: var(--border-bright); animation: spin 1.4s linear infinite reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-label { color: var(--text-muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .loading-progress { width: 240px; height: 2px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .loading-progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── RESULTS ── */
+  .results-area {
+    display: none; gap: 24px;
+    opacity: 0; transform: translateY(16px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .results-area.active  { display: flex; flex-direction: column; }
+  .results-area.visible { opacity: 1; transform: translateY(0); }
+
+  .results-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .chart-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px;
+    position: relative; overflow: hidden;
+  }
+  .chart-panel::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  }
+  .panel-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; }
+  .chart-wrap  { position: relative; width: 100%; aspect-ratio: 1; max-width: 280px; margin: 0 auto; cursor: pointer; }
+
+  .detail-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px;
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; min-height: 320px;
+  }
+  .detail-panel::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--border); transition: background 0.3s;
+  }
+  .detail-panel.highlighted::before {
+    background: linear-gradient(90deg, var(--highlight-color, var(--accent)), transparent);
+  }
+
+  .detail-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px; color: var(--text-dim); font-size: 12px; text-align: center;
+  }
+  .detail-empty .arrow { font-size: 20px; }
+
+  .detail-content { display: none; flex-direction: column; gap: 14px; }
+  .detail-content.visible { display: flex; }
+
+  .detail-category { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; line-height: 1.2; }
+  .detail-count { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .count-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text); }
+  .detail-divider { height: 1px; background: var(--border); }
+  .detail-summary { font-family: 'Noto Sans Thai', sans-serif; font-size: 14px; line-height: 1.8; color: #b0b0be; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stat-value { font-family: 'Instrument Serif', serif; font-size: 28px; font-style: italic; line-height: 1; }
+  .stat-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-top: 6px; }
+
+  .legend { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .legend-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    transition: background 0.15s; border: 1px solid transparent;
+  }
+  .legend-item:hover  { background: var(--surface2); border-color: var(--border); }
+  .legend-item.active { background: var(--surface2); border-color: var(--border-bright); }
+  .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { flex: 1; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .legend-pct  { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    z-index: 100; display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 16px; padding: 32px;
+    width: 440px; max-width: 90vw;
+    position: relative;
+    animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9) translateY(16px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+  }
+  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; margin-bottom: 6px; }
+  .modal-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 28px; letter-spacing: 0.5px; }
+
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 20px; line-height: 1;
+    transition: color 0.15s;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .field-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* active file badge */
+  .active-file-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 20px;
+  }
+  .active-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent4, #3cffb4); flex-shrink: 0; }
+  .active-file-name { flex: 1; font-size: 12px; color: var(--text); }
+  .reset-link { font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
+  .reset-link:hover { color: var(--text); }
+
+  /* path input */
+  .path-input-wrap { display: flex; gap: 8px; }
+  .path-input {
+    flex: 1;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .path-input::placeholder { color: var(--text-dim); }
+  .path-input:focus { border-color: var(--border-bright); }
+
+  .modal-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
+  .modal-hint code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  .modal-save {
+    width: 100%; margin-top: 20px; padding: 12px;
+    background: var(--accent); border: none; border-radius: 8px;
+    color: white; font-family: 'DM Mono', monospace;
+    font-size: 12px; letter-spacing: 1px; cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .modal-save:hover { background: #ff5555; box-shadow: 0 4px 20px var(--glow); }
+  .modal-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── SETTINGS GEAR ── */
+  .settings-btn {
+    position: fixed; bottom: 28px; left: 28px;
+    width: 40px; height: 40px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.35s;
+    z-index: 10;
+  }
+  .settings-btn:hover { border-color: var(--border-bright); transform: rotate(65deg); }
+  .settings-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
+
+  /* key indicator dot on gear */
+  .settings-btn .no-key-dot {
+    position: absolute; top: 4px; right: 4px;
+    width: 8px; height: 8px;
+    border-radius: 50%; background: #ffc93c;
+    border: 2px solid var(--bg);
+    display: none;
+  }
+  .settings-btn.no-key .no-key-dot { display: block; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--surface2); border: 1px solid var(--border-bright);
+    border-radius: 8px; padding: 12px 20px;
+    font-size: 12px; color: var(--text-muted);
+    z-index: 200; opacity: 0; transform: translateY(10px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: var(--accent); color: #ff8080; }
+
+  @media (max-width: 640px) {
+    .results-row  { grid-template-columns: 1fr; }
+    .stats-row    { grid-template-columns: repeat(2, 1fr); }
+    .header h1    { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="yt-icon">
+      <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+    </div>
+    <h1>Comment Analysis</h1>
+    <div class="header-line"></div>
+  </div>
+
+  <!-- No-key warning banner -->
+  <div class="key-warning" id="keyWarning">
+    <div class="key-warning-dot"></div>
+    ยังไม่ได้ตั้งค่า API Key —
+    <a onclick="openSettings()">ตั้งค่าตอนนี้</a>
+  </div>
+
+  <!-- Control bar -->
+  <div class="control-bar">
+    <input type="text" class="url-input" id="urlInput" placeholder="Youtube Link" autocomplete="off" spellcheck="false">
+    <div class="model-wrapper">
+      <select class="model-select" id="modelSelect">
+        <option value="qwen2.5:latest">qwen 2.5</option>
+        <option value="gemma4:latest">gemma 4</option>
+        <option value="llama3.2:latest">llama 3.2</option>
+        <option value="mistral:latest">mistral</option>
+        <option value="phi4:latest">phi 4</option>
+      </select>
+    </div>
+    <button class="submit-btn" id="submitBtn" title="Analyze">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-area" id="loadingArea">
+    <div class="spinner"></div>
+    <div class="loading-label" id="loadingLabel">กำลังเริ่มต้น…</div>
+    <div class="loading-progress">
+      <div class="loading-progress-bar" id="loadingBar"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-area" id="resultsArea">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Total Comments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statCategories">—</div>
+        <div class="stat-label">Categories</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTop">—</div>
+        <div class="stat-label">Top Group</div>
+      </div>
+    </div>
+
+    <div class="results-row">
+      <div class="chart-panel">
+        <div class="panel-label">Distribution</div>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="detail-panel" id="detailPanel">
+        <div class="panel-label">Category Detail</div>
+        <div class="detail-empty" id="detailEmpty">
+          <div class="arrow">←</div>
+          <div>คลิกที่ชิ้นกราฟหรือหมวดหมู่<br>เพื่อดูรายละเอียด</div>
+        </div>
+        <div class="detail-content" id="detailContent">
+          <div class="detail-category" id="detailCategory"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="detail-count">Comments</span>
+            <span class="count-pill" id="detailCount"></span>
+          </div>
+          <div class="detail-divider"></div>
+          <div class="detail-summary" id="detailSummary"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Settings gear button -->
+<button class="settings-btn" id="settingsBtn" title="Settings">
+  <svg viewBox="0 0 24 24">
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+  <div class="no-key-dot"></div>
+</button>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-title">Settings</div>
+    <div class="modal-subtitle">จัดการ YouTube Data API Key</div>
+
+    <!-- ไฟล์ที่ใช้อยู่ตอนนี้ -->
+    <div class="field-label">ไฟล์ที่ใช้อยู่ตอนนี้</div>
+    <div class="active-file-row">
+      <div class="active-dot"></div>
+      <span class="active-file-name" id="activeFileName">API_Key.txt (default)</span>
+      <span class="reset-link" id="resetLink">รีเซ็ตเป็นค่าเริ่มต้น</span>
+    </div>
+
+    <!-- เลือกไฟล์ใหม่ -->
+    <div class="field-label">เปลี่ยนไฟล์ API Key</div>
+    <div class="path-input-wrap">
+      <input type="text" class="path-input" id="keyPathInput"
+             placeholder="วาง path ของไฟล์ เช่น C:\Users\...\key.txt">
+    </div>
+    <div class="modal-hint">
+      วิธีหา path: เปิด File Explorer → คลิกขวาที่ไฟล์ → <code>Copy as path</code><br>
+      แล้ววางตรงนี้ได้เลย (ลบ " " ที่ติดมาออกด้วย)
+    </div>
+
+    <button class="modal-save" id="modalSave">บันทึก</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const PALETTE = [
+  '#ff3c3c','#ff7c3c','#ffc93c',
+  '#3cffb4','#3c8fff','#c43cff',
+  '#ff3ca8','#3cffe8','#a8ff3c','#ff6b3c'
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let chartInstance = null;
+let currentData   = null;
+let activeSSE     = null;
+
+// ── On load: check API key status ─────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', checkKeyStatus);
+
+async function checkKeyStatus() {
+  try {
+    const res  = await fetch('/api/key-status');
+    const data = await res.json();
+    const hasKey = data.has_key;
+    const fileName = data.active_file || 'API_Key.txt';
+
+    document.getElementById('activeFileName').textContent =
+      fileName + (fileName === 'API_Key.txt' ? ' (default)' : '');
+
+    document.getElementById('keyWarning').classList.toggle('visible', !hasKey);
+    document.getElementById('settingsBtn').classList.toggle('no-key', !hasKey);
+  } catch(e) {
+    // Flask ยังไม่ขึ้น — ไม่แสดงอะไร
+  }
+}
+
+// ── URL input ──────────────────────────────────────────────────────────────
+const urlInput  = document.getElementById('urlInput');
+const submitBtn = document.getElementById('submitBtn');
+
+urlInput.addEventListener('input', () => {
+  const v = urlInput.value.trim();
+  submitBtn.classList.toggle('visible', v.length > 0);
+  urlInput.classList.toggle('has-value', v.length > 0);
+});
+
+// ── Submit → SSE ───────────────────────────────────────────────────────────
+submitBtn.addEventListener('click', startAnalysis);
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') startAnalysis(); });
+
+function startAnalysis() {
+  const url   = urlInput.value.trim();
+  const model = document.getElementById('modelSelect').value;
+  if (!url) return;
+
+  // ปิด SSE เก่าถ้ามี
+  if (activeSSE) { activeSSE.close(); activeSSE = null; }
+
+  // Reset UI
+  document.getElementById('loadingArea').classList.add('active');
+  document.getElementById('resultsArea').classList.remove('active','visible');
+  setProgress(5, 'กำลังเชื่อมต่อ…');
+
+  // เปิด SSE stream
+  const endpoint = `/api/analyze?url=${encodeURIComponent(url)}&model=${encodeURIComponent(model)}`;
+  const source = new EventSource(endpoint);
+  activeSSE = source;
+
+  source.onmessage = (e) => {
+    const event = JSON.parse(e.data);
+
+    if (event.type === 'ping') return;
+
+    if (event.type === 'progress' || event.type === 'status') {
+      setProgress(event.percent ?? null, event.message);
+    }
+
+    if (event.type === 'warning') {
+      showToast(event.message, false);
+    }
+
+    if (event.type === 'done') {
+      source.close(); activeSSE = null;
+      setProgress(100, 'เสร็จแล้ว!');
+      setTimeout(() => {
+        document.getElementById('loadingArea').classList.remove('active');
+        showResults(event.results);
+      }, 400);
+    }
+
+    if (event.type === 'error') {
+      source.close(); activeSSE = null;
+      document.getElementById('loadingArea').classList.remove('active');
+      showToast('Error: ' + event.message, true);
+    }
+  };
+
+  source.onerror = () => {
+    source.close(); activeSSE = null;
+    document.getElementById('loadingArea').classList.remove('active');
+    showToast('การเชื่อมต่อขาดหาย กรุณาลองใหม่', true);
+  };
+}
+
+function setProgress(percent, label) {
+  if (label)   document.getElementById('loadingLabel').textContent = label;
+  if (percent !== null)
+    document.getElementById('loadingBar').style.width = percent + '%';
+}
+
+// ── Show Results ───────────────────────────────────────────────────────────
+function showResults(data) {
+  currentData = data;
+  const total = data.reduce((s, d) => s + d.count, 0);
+
+  document.getElementById('statTotal').textContent      = total;
+  document.getElementById('statCategories').textContent = data.length;
+  const top = data[0]; // เรียงจากมากสุดแล้วจาก backend
+  document.getElementById('statTop').textContent        = top ? top.count : '—';
+
+  buildChart(data, total);
+  buildLegend(data, total);
+
+  // reset detail
+  document.getElementById('detailEmpty').style.display = '';
+  document.getElementById('detailContent').classList.remove('visible');
+  document.getElementById('detailPanel').classList.remove('highlighted');
+
+  const area = document.getElementById('resultsArea');
+  area.classList.add('active');
+  requestAnimationFrame(() => requestAnimationFrame(() => area.classList.add('visible')));
+}
+
+function buildChart(data, total) {
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.category),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: PALETTE.slice(0, data.length),
+        borderColor: '#141416',
+        borderWidth: 3,
+        hoverOffset: 14,
+      }]
+    },
+    options: {
+      cutout: '55%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed} comments (${((ctx.parsed/total)*100).toFixed(1)}%)`
+          },
+          backgroundColor: '#1c1c1f',
+          titleColor: '#e8e8ec', bodyColor: '#6b6b75',
+          borderColor: '#2a2a2e', borderWidth: 1,
+          padding: 12,
+          titleFont: { family: 'DM Mono', size: 12 },
+          bodyFont:  { family: 'DM Mono', size: 11 },
+        }
+      },
+      onClick: (e, elements) => { if (elements.length > 0) selectCategory(elements[0].index); },
+      animation: { animateRotate: true, duration: 800, easing: 'easeInOutQuart' }
+    }
+  });
+}
+
+function buildLegend(data, total) {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  data.forEach((d, i) => {
+    const pct  = ((d.count / total) * 100).toFixed(1);
+    const item = document.createElement('div');
+    item.className    = 'legend-item';
+    item.dataset.index = i;
+    item.innerHTML = `
+      <div class="legend-dot" style="background:${PALETTE[i]}"></div>
+      <span class="legend-name">${d.category}</span>
+      <span class="legend-pct">${pct}%</span>`;
+    item.addEventListener('click', () => selectCategory(i));
+    legend.appendChild(item);
+  });
+}
+
+function selectCategory(index) {
+  const d     = currentData[index];
+  const color = PALETTE[index];
+
+  document.getElementById('detailEmpty').style.display = 'none';
+  document.getElementById('detailContent').classList.add('visible');
+  document.getElementById('detailCategory').textContent = d.category;
+  document.getElementById('detailCount').textContent    = d.count;
+  document.getElementById('detailSummary').textContent  = d.summary;
+
+  const panel = document.getElementById('detailPanel');
+  panel.classList.add('highlighted');
+  panel.style.setProperty('--highlight-color', color);
+
+  document.querySelectorAll('.legend-item').forEach((el, i) =>
+    el.classList.toggle('active', i === index));
+}
+
+// ── Settings modal ─────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('modalBackdrop').classList.add('open');
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalBackdrop').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.getElementById('keyPathInput').value = '';
+}
+
+// Reset key
+document.getElementById('resetLink').addEventListener('click', async () => {
+  const res  = await fetch('/api/reset-key', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('activeFileName').textContent = data.active_file + ' (default)';
+    showToast('รีเซ็ตกลับเป็น API_Key.txt แล้ว');
+    checkKeyStatus();
+  }
+});
+
+// Save new key path
+document.getElementById('modalSave').addEventListener('click', async () => {
+  const path = document.getElementById('keyPathInput').value.trim();
+  if (!path) { showToast('กรุณาระบุ path ของไฟล์', true); return; }
+
+  const btn = document.getElementById('modalSave');
+  btn.disabled = true;
+  btn.textContent = 'กำลังตรวจสอบ…';
+
+  try {
+    const res  = await fetch('/api/select-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('activeFileName').textContent = data.active_file;
+      showToast(`ใช้ไฟล์: ${data.active_file} แล้ว`);
+      checkKeyStatus();
+      closeModal();
+    } else {
+      showToast('Error: ' + data.error, true);
+    }
+  } catch(e) {
+    showToast('เชื่อมต่อ server ไม่ได้', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'บันทึก';
+  }
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('error', isError);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
