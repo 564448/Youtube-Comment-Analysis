@@ -138,6 +138,7 @@ def analyze_stream():
     """
     youtube_url = request.args.get("url", "").strip()
     model       = request.args.get("model", "qwen2.5:latest").strip()
+    batch_size  = max(5, min(100, int(request.args.get("batch", 25))))
 
     if not youtube_url:
         return jsonify({"error": "ไม่มี URL"}), 400
@@ -177,7 +178,7 @@ def analyze_stream():
             comments = get_comments_from_csv(file_name)
 
             # 3. Analyze (progress ส่งผ่าน queue ใน Analytic.py)
-            analyze_with_progress(comments, progress_queue, model=model)
+            analyze_with_progress(comments, progress_queue, model=model, batch_size=batch_size)
 
         except Exception as e:
             progress_queue.put({"type": "error", "message": f"เกิดข้อผิดพลาด: {str(e)}"})
