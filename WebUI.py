@@ -9,6 +9,7 @@ from flask_cors import CORS
 from Analytic_For_WebUI import analyze_with_progress
 from Extract import get_comments_from_csv
 from Fetch import Fetch
+from model_list import model_list
 
 # ──────────────────────────────────────────────
 # CONFIG
@@ -75,6 +76,16 @@ def key_status():
         "has_key":     bool(key),
         "active_file": os.path.basename(path),
     })
+
+
+@app.route("/api/models")
+def get_models():
+    """ดึงรายชื่อโมเดลที่ติดตั้งใน Ollama บนเครื่อง"""
+    try:
+        models = model_list()
+        return jsonify({"models": models})
+    except Exception as e:
+        return jsonify({"error": str(e), "models": []}), 500
 
 
 @app.route("/api/select-key", methods=["POST"])

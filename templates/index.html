@@ -20,6 +20,8 @@
     --accent2: #ff7c3c;
     --accent3: #ffc93c;
     --glow: rgba(255, 60, 60, 0.15);
+    /* YouTube icon is always red — never affected by theme */
+    --yt-red: #ff3c3c;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,68 +39,259 @@
 
   body::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background-image:
       linear-gradient(var(--border) 1px, transparent 1px),
       linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 40px 40px;
     opacity: 0.3;
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
 
   .app {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 900px;
+    position: relative; z-index: 1;
+    width: 100%; max-width: 900px;
     padding: 40px 24px 80px;
   }
 
   /* ── HEADER ── */
   .header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    display: flex; align-items: center; gap: 16px;
     margin-bottom: 40px;
   }
+
+  /* YouTube icon — always red, never changes with theme */
   .yt-icon {
     width: 44px; height: 44px;
-    background: var(--accent);
+    background: var(--yt-red) !important;
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 0 24px var(--glow);
+    box-shadow: 0 0 24px rgba(255,60,60,0.3);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .yt-icon:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 32px rgba(255,60,60,0.45);
   }
   .yt-icon svg { width: 22px; height: 22px; fill: white; }
+
   .header h1 {
     font-family: 'Instrument Serif', serif;
-    font-size: 28px; font-style: italic;
-    letter-spacing: -0.5px;
+    font-size: 28px; font-style: italic; letter-spacing: -0.5px;
   }
   .header-line {
     flex: 1; height: 1px;
     background: linear-gradient(90deg, var(--border-bright), transparent);
   }
 
+  /* ── CONTROL TAB BUTTON (top-left in header) ── */
+  .ctrl-tab-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+  .ctrl-tab-btn:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .ctrl-tab-btn svg {
+    width: 14px; height: 14px;
+    fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  }
+  /* yellow dot indicator when no API key */
+  .ctrl-tab-btn .no-key-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #ffc93c; flex-shrink: 0; display: none;
+  }
+  .ctrl-tab-btn.no-key .no-key-dot { display: block; }
+
+  /* ── MODAL BACKDROP ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: none; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  /* ── MODAL ── */
+  .modal {
+    background: linear-gradient(180deg, #1a1b22 0%, #16171d 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 28px;
+    width: 400px; max-width: 90vw;
+    position: relative;
+    animation: modalIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+
+  .modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .modal-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 20px; color: #f0f0f5;
+  }
+  .modal-subtitle { font-size: 11px; color: #7a8099; margin-top: 3px; }
+
+  .modal-close {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #8890a8; width: 30px; height: 30px;
+    border-radius: 8px; cursor: pointer; font-size: 13px;
+    display: grid; place-items: center;
+    transition: background 0.2s, color 0.2s; flex-shrink: 0;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.1); color: #f0f0f5; }
+
+  /* ── TABS inside modal ── */
+  .modal-tabs {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 5px;
+    margin-bottom: 22px;
+  }
+  .tab-button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #8890a8; border-radius: 10px;
+    padding: 9px 8px; font-size: 11px;
+    font-family: 'DM Mono', 'Noto Sans Thai', monospace;
+    cursor: pointer; text-align: center;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+  }
+  .tab-button:hover { background: rgba(255,255,255,0.05); color: #c8ccd8; }
+  .tab-button.active {
+    background: #252730;
+    border-color: rgba(255,255,255,0.1);
+    color: #f0f0f5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .tab-panel { display: none; flex-direction: column; gap: 14px; }
+  .tab-panel.active { display: flex; }
+
+  /* ── PANEL ELEMENTS ── */
+  .panel-label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 2px; color: #5c6280;
+    font-family: 'DM Mono', monospace;
+  }
+  .api-status-row {
+    padding: 12px 14px;
+    background: #1f2028;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; color: #d0d4e8; font-size: 12px;
+  }
+  .active-file-row {
+    display: flex; align-items: center; gap: 8px;
+    background: #1e2028;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .active-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #3cffb4; flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(60,255,180,0.5);
+  }
+  .active-file-name { flex: 1; font-size: 12px; color: #d0d4e8; }
+  .reset-link { font-size: 11px; color: #5c6280; cursor: pointer; text-decoration: underline; }
+  .reset-link:hover { color: #a0a8c0; }
+
+  .field-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: #5c6280; font-family: 'DM Mono', monospace;
+  }
+  .path-input {
+    width: 100%;
+    background: #1e2028;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 14px;
+    color: #d0d4e8;
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .path-input::placeholder { color: #3d4058; font-family: 'Noto Sans Thai', sans-serif; }
+  .path-input:focus { border-color: rgba(255,255,255,0.2); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+
+  .modal-hint { font-size: 11px; color: #5c6280; line-height: 1.6; }
+  .modal-hint code { background: #252830; padding: 1px 5px; border-radius: 3px; font-size: 11px; color: #a0a8c0; }
+
+  .modal-save {
+    width: 100%; padding: 12px;
+    background: var(--accent); border: none; border-radius: 10px;
+    color: white; font-family: 'DM Mono', monospace;
+    font-size: 12px; letter-spacing: 1px; cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: 0 4px 16px rgba(255,60,60,0.25);
+  }
+  .modal-save:hover { background: #ff5252; box-shadow: 0 6px 24px rgba(255,60,60,0.4); transform: translateY(-1px); }
+  .modal-save:active { transform: translateY(0); }
+  .modal-save:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── COLOR SWATCHES ── */
+  .color-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  }
+  .color-swatch {
+    width: 100%; aspect-ratio: 1; border-radius: 14px;
+    border: 2px solid transparent; cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .color-swatch:hover { transform: scale(1.08); }
+  .color-swatch.active {
+    transform: scale(1.05);
+    border-color: var(--text);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.08);
+  }
+  .theme-hint {
+    font-size: 11px; color: #5c6280; line-height: 1.5;
+  }
+
+  /* ── KEY WARNING BANNER ── */
+  .key-warning {
+    display: none; align-items: center; gap: 10px;
+    background: rgba(255,193,60,0.08);
+    border: 1px solid rgba(255,193,60,0.25);
+    border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 20px; font-size: 12px; color: #ffc93c;
+  }
+  .key-warning.visible { display: flex; }
+  .key-warning-dot { width: 6px; height: 6px; border-radius: 50%; background: #ffc93c; flex-shrink: 0; }
+  .key-warning a { color: #ffc93c; text-decoration: underline; cursor: pointer; }
+
   /* ── CONTROL BAR ── */
   .control-bar {
     display: flex; gap: 10px;
-    margin-bottom: 32px;
-    align-items: stretch;
+    margin-bottom: 32px; align-items: stretch;
   }
   .url-input {
     flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
   }
   .url-input::placeholder { color: var(--text-dim); }
   .url-input:focus { border-color: var(--border-bright); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
@@ -107,36 +300,24 @@
   .model-wrapper { position: relative; }
   .model-select {
     appearance: none;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 36px 12px 14px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer; outline: none;
-    transition: border-color 0.2s;
-    height: 100%;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 36px 12px 14px;
+    color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 12px;
+    cursor: pointer; outline: none; transition: border-color 0.2s; height: 100%;
   }
   .model-select:focus { border-color: var(--border-bright); }
   .model-wrapper::after {
-    content: '⌄';
-    position: absolute; right: 12px; top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    pointer-events: none; font-size: 14px;
+    content: '⌄'; position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--text-muted); pointer-events: none; font-size: 14px;
   }
 
   .submit-btn {
-    width: 44px;
-    background: var(--accent); border: none;
+    width: 44px; background: var(--accent); border: none;
     border-radius: 8px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
     box-shadow: 0 0 20px var(--glow);
-    opacity: 0; pointer-events: none;
-    transform: scale(0.8);
+    opacity: 0; pointer-events: none; transform: scale(0.8);
   }
   .submit-btn.visible {
     opacity: 1; pointer-events: auto; transform: scale(1);
@@ -150,31 +331,12 @@
   .submit-btn:active { transform: scale(0.95); }
   .submit-btn svg { width: 18px; height: 18px; fill: none; stroke: white; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* ── KEY WARNING BANNER ── */
-  .key-warning {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 193, 60, 0.08);
-    border: 1px solid rgba(255, 193, 60, 0.25);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 20px;
-    font-size: 12px;
-    color: #ffc93c;
-  }
-  .key-warning.visible { display: flex; }
-  .key-warning-dot { width: 6px; height: 6px; border-radius: 50%; background: #ffc93c; flex-shrink: 0; }
-  .key-warning a { color: #ffc93c; text-decoration: underline; cursor: pointer; }
-
   /* ── LOADING ── */
   .loading-area {
     display: none; flex-direction: column;
-    align-items: center; gap: 20px;
-    padding: 80px 0;
+    align-items: center; gap: 20px; padding: 80px 0;
   }
   .loading-area.active { display: flex; }
-
   .spinner { width: 48px; height: 48px; position: relative; }
   .spinner::before, .spinner::after {
     content: ''; position: absolute; inset: 0;
@@ -183,15 +345,12 @@
   .spinner::before { border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
   .spinner::after  { border-bottom-color: var(--border-bright); animation: spin 1.4s linear infinite reverse; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
   .loading-label { color: var(--text-muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-
   .loading-progress { width: 240px; height: 2px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
   .loading-progress-bar {
     height: 100%; width: 0%;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px;
-    transition: width 0.4s ease;
+    border-radius: 2px; transition: width 0.4s ease;
   }
 
   /* ── RESULTS ── */
@@ -202,20 +361,18 @@
   }
   .results-area.active  { display: flex; flex-direction: column; }
   .results-area.visible { opacity: 1; transform: translateY(0); }
-
   .results-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
   .chart-panel {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 28px;
-    position: relative; overflow: hidden;
+    border-radius: 12px; padding: 28px; position: relative; overflow: hidden;
   }
   .chart-panel::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
     background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
   }
-  .panel-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; }
-  .chart-wrap  { position: relative; width: 100%; aspect-ratio: 1; max-width: 280px; margin: 0 auto; cursor: pointer; }
+  .panel-label-main { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; }
+  .chart-wrap { position: relative; width: 100%; aspect-ratio: 1; max-width: 280px; margin: 0 auto; cursor: pointer; }
 
   .detail-panel {
     background: var(--surface); border: 1px solid var(--border);
@@ -230,17 +387,14 @@
   .detail-panel.highlighted::before {
     background: linear-gradient(90deg, var(--highlight-color, var(--accent)), transparent);
   }
-
   .detail-empty {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 8px; color: var(--text-dim); font-size: 12px; text-align: center;
   }
   .detail-empty .arrow { font-size: 20px; }
-
   .detail-content { display: none; flex-direction: column; gap: 14px; }
   .detail-content.visible { display: flex; }
-
   .detail-category { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; line-height: 1.2; }
   .detail-count { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
   .count-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text); }
@@ -264,152 +418,115 @@
   .legend-name { flex: 1; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .legend-pct  { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-  /* ── MODAL ── */
-  .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(6px);
-    z-index: 100; display: none;
-    align-items: center; justify-content: center;
-  }
-  .modal-backdrop.open { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border-bright);
-    border-radius: 16px; padding: 32px;
-    width: 440px; max-width: 90vw;
-    position: relative;
-    animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.9) translateY(16px); }
-    to   { opacity: 1; transform: scale(1)   translateY(0); }
-  }
-  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 22px; margin-bottom: 6px; }
-  .modal-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 28px; letter-spacing: 0.5px; }
-
-  .modal-close {
-    position: absolute; top: 16px; right: 16px;
-    background: none; border: none; color: var(--text-muted);
-    cursor: pointer; font-size: 20px; line-height: 1;
-    transition: color 0.15s;
-  }
-  .modal-close:hover { color: var(--text); }
-
-  .field-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
-
-  /* active file badge */
-  .active-file-row {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; margin-bottom: 20px;
-  }
-  .active-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent4, #3cffb4); flex-shrink: 0; }
-  .active-file-name { flex: 1; font-size: 12px; color: var(--text); }
-  .reset-link { font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
-  .reset-link:hover { color: var(--text); }
-
-  /* path input */
-  .path-input-wrap { display: flex; gap: 8px; }
-  .path-input {
-    flex: 1;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px;
-    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .path-input::placeholder { color: var(--text-dim); }
-  .path-input:focus { border-color: var(--border-bright); }
-
-  .modal-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
-  .modal-hint code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
-
-  .modal-save {
-    width: 100%; margin-top: 20px; padding: 12px;
-    background: var(--accent); border: none; border-radius: 8px;
-    color: white; font-family: 'DM Mono', monospace;
-    font-size: 12px; letter-spacing: 1px; cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s;
-  }
-  .modal-save:hover { background: #ff5555; box-shadow: 0 4px 20px var(--glow); }
-  .modal-save:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* ── SETTINGS GEAR ── */
-  .settings-btn {
-    position: fixed; bottom: 28px; left: 28px;
-    width: 40px; height: 40px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: border-color 0.2s, transform 0.35s;
-    z-index: 10;
-  }
-  .settings-btn:hover { border-color: var(--border-bright); transform: rotate(65deg); }
-  .settings-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
-
-  /* key indicator dot on gear */
-  .settings-btn .no-key-dot {
-    position: absolute; top: 4px; right: 4px;
-    width: 8px; height: 8px;
-    border-radius: 50%; background: #ffc93c;
-    border: 2px solid var(--bg);
-    display: none;
-  }
-  .settings-btn.no-key .no-key-dot { display: block; }
-
   /* ── TOAST ── */
   .toast {
     position: fixed; bottom: 28px; right: 28px;
     background: var(--surface2); border: 1px solid var(--border-bright);
     border-radius: 8px; padding: 12px 20px;
     font-size: 12px; color: var(--text-muted);
-    z-index: 200; opacity: 0; transform: translateY(10px);
-    transition: opacity 0.25s, transform 0.25s;
-    pointer-events: none;
+    z-index: 300; opacity: 0; transform: translateY(10px);
+    transition: opacity 0.25s, transform 0.25s; pointer-events: none;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.error { border-color: var(--accent); color: #ff8080; }
 
   @media (max-width: 640px) {
-    .results-row  { grid-template-columns: 1fr; }
-    .stats-row    { grid-template-columns: repeat(2, 1fr); }
-    .header h1    { font-size: 22px; }
+    .results-row { grid-template-columns: 1fr; }
+    .stats-row   { grid-template-columns: repeat(2, 1fr); }
+    .header h1   { font-size: 22px; }
   }
 </style>
 </head>
 <body>
 
+<!-- ── MODAL BACKDROP ── -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Control Tab</div>
+        <div class="modal-subtitle">API Key & Theme settings</div>
+      </div>
+      <button class="modal-close" id="modalClose" type="button">✕</button>
+    </div>
+
+    <!-- 2 tabs only -->
+    <div class="modal-tabs">
+      <button class="tab-button active" type="button" data-tab="apiTab">🔑 API Key</button>
+      <button class="tab-button" type="button" data-tab="themeTab">🎨 Theme</button>
+    </div>
+
+    <!-- API Tab -->
+    <div class="tab-panel active" id="apiTab">
+      <div class="panel-label">Status</div>
+      <div class="api-status-row" id="apiStatus">Loading…</div>
+
+      <div class="panel-label">Active File</div>
+      <div class="active-file-row">
+        <div class="active-dot"></div>
+        <span class="active-file-name" id="activeFileName">API_Key.txt (default)</span>
+        <span class="reset-link" id="resetLink">Reset</span>
+      </div>
+
+      <div class="field-label">Change Key File — paste path below</div>
+      <input type="text" class="path-input" id="keyPathInput"
+             placeholder="C:\Users\...\key.txt" autocomplete="off" spellcheck="false">
+      <div class="modal-hint">
+        File Explorer → Right-click file → <code>Copy as path</code> → paste here (remove the " ")
+      </div>
+      <button class="modal-save" id="apiSaveBtn" type="button">Save</button>
+    </div>
+
+    <!-- Theme Tab -->
+    <div class="tab-panel" id="themeTab">
+      <div class="panel-label">Accent Color</div>
+      <div class="color-grid" id="colorGrid"></div>
+      <div class="theme-hint">
+        Changes button, spinner, progress bar, and chart accent colors.<br>
+        The YouTube icon stays red regardless of theme.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
 <div class="app">
 
-  <!-- Header -->
+  <!-- Header: YT icon (clickable → open modal) | title | line | ctrl-tab btn -->
   <div class="header">
-    <div class="yt-icon">
+    <div class="yt-icon" id="ytIcon" title="Open Control Tab">
       <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
     </div>
     <h1>Comment Analysis</h1>
     <div class="header-line"></div>
+    <!-- Control Tab button — top-left of header (right side) -->
+    <button class="ctrl-tab-btn" id="ctrlTabBtn" type="button">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Control Tab
+      <div class="no-key-dot"></div>
+    </button>
   </div>
 
   <!-- No-key warning banner -->
   <div class="key-warning" id="keyWarning">
     <div class="key-warning-dot"></div>
     ยังไม่ได้ตั้งค่า API Key —
-    <a onclick="openSettings()">ตั้งค่าตอนนี้</a>
+    <a onclick="openModal()">ตั้งค่าตอนนี้</a>
   </div>
 
   <!-- Control bar -->
   <div class="control-bar">
     <input type="text" class="url-input" id="urlInput" placeholder="Youtube Link" autocomplete="off" spellcheck="false">
     <div class="model-wrapper">
-      <select class="model-select" id="modelSelect">
-        <option value="qwen2.5:latest">qwen 2.5</option>
-        <option value="gemma4:latest">gemma 4</option>
-        <option value="llama3.2:latest">llama 3.2</option>
-        <option value="mistral:latest">mistral</option>
-        <option value="phi4:latest">phi 4</option>
+      <select class="model-select" id="modelSelect" disabled>
+        <option value="">กำลังโหลด…</option>
       </select>
     </div>
-    <button class="submit-btn" id="submitBtn" title="Analyze">
+    <button class="submit-btn" id="submitBtn" title="Analyze" type="button">
       <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
     </button>
   </div>
@@ -439,16 +556,14 @@
         <div class="stat-label">Top Group</div>
       </div>
     </div>
-
     <div class="results-row">
       <div class="chart-panel">
-        <div class="panel-label">Distribution</div>
+        <div class="panel-label-main">Distribution</div>
         <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
         <div class="legend" id="legend"></div>
       </div>
-
       <div class="detail-panel" id="detailPanel">
-        <div class="panel-label">Category Detail</div>
+        <div class="panel-label-main">Category Detail</div>
         <div class="detail-empty" id="detailEmpty">
           <div class="arrow">←</div>
           <div>คลิกที่ชิ้นกราฟหรือหมวดหมู่<br>เพื่อดูรายละเอียด</div>
@@ -468,46 +583,6 @@
 
 </div><!-- /app -->
 
-<!-- Settings gear button -->
-<button class="settings-btn" id="settingsBtn" title="Settings">
-  <svg viewBox="0 0 24 24">
-    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>
-  <div class="no-key-dot"></div>
-</button>
-
-<!-- Settings modal -->
-<div class="modal-backdrop" id="modalBackdrop">
-  <div class="modal">
-    <button class="modal-close" id="modalClose">✕</button>
-    <div class="modal-title">Settings</div>
-    <div class="modal-subtitle">จัดการ YouTube Data API Key</div>
-
-    <!-- ไฟล์ที่ใช้อยู่ตอนนี้ -->
-    <div class="field-label">ไฟล์ที่ใช้อยู่ตอนนี้</div>
-    <div class="active-file-row">
-      <div class="active-dot"></div>
-      <span class="active-file-name" id="activeFileName">API_Key.txt (default)</span>
-      <span class="reset-link" id="resetLink">รีเซ็ตเป็นค่าเริ่มต้น</span>
-    </div>
-
-    <!-- เลือกไฟล์ใหม่ -->
-    <div class="field-label">เปลี่ยนไฟล์ API Key</div>
-    <div class="path-input-wrap">
-      <input type="text" class="path-input" id="keyPathInput"
-             placeholder="วาง path ของไฟล์ เช่น C:\Users\...\key.txt">
-    </div>
-    <div class="modal-hint">
-      วิธีหา path: เปิด File Explorer → คลิกขวาที่ไฟล์ → <code>Copy as path</code><br>
-      แล้ววางตรงนี้ได้เลย (ลบ " " ที่ติดมาออกด้วย)
-    </div>
-
-    <button class="modal-save" id="modalSave">บันทึก</button>
-  </div>
-</div>
-
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -517,29 +592,169 @@ const PALETTE = [
   '#3cffb4','#3c8fff','#c43cff',
   '#ff3ca8','#3cffe8','#a8ff3c','#ff6b3c'
 ];
+const STORAGE_ACCENT_KEY = 'yt_comment_analysis_accent';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let chartInstance = null;
 let currentData   = null;
 let activeSSE     = null;
 
-// ── On load: check API key status ─────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', checkKeyStatus);
+// ── Init ───────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  initModal();
+  initTheme();
+  initTabControls();
+  checkKeyStatus();
+  loadModels();
+});
 
+// ── Modal ──────────────────────────────────────────────────────────────────
+function initModal() {
+  document.getElementById('ctrlTabBtn').addEventListener('click', openModal);
+  document.getElementById('ytIcon').addEventListener('click', openModal);
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalBackdrop').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.getElementById('resetLink').addEventListener('click', resetKey);
+  document.getElementById('apiSaveBtn').addEventListener('click', saveKeyPath);
+}
+
+function openModal() { document.getElementById('modalBackdrop').classList.add('open'); }
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.getElementById('keyPathInput').value = '';
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function initTabControls() {
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+function initTheme() {
+  const stored = localStorage.getItem(STORAGE_ACCENT_KEY);
+  if (stored) applyAccent(stored);
+  renderColorSwatches();
+}
+
+function applyAccent(color) {
+  document.documentElement.style.setProperty('--accent',  color);
+  document.documentElement.style.setProperty('--accent2', color);
+  document.documentElement.style.setProperty('--accent3', color);
+  // yt-icon stays red — enforced by --yt-red which is never changed
+}
+
+function renderColorSwatches() {
+  const grid = document.getElementById('colorGrid');
+  grid.innerHTML = '';
+  PALETTE.forEach(color => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'color-swatch';
+    btn.style.background = color;
+    btn.dataset.color = color;
+    btn.addEventListener('click', () => {
+      localStorage.setItem(STORAGE_ACCENT_KEY, color);
+      applyAccent(color);
+      updateSwatches();
+    });
+    grid.appendChild(btn);
+  });
+  updateSwatches();
+}
+
+function updateSwatches() {
+  const current = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  document.querySelectorAll('.color-swatch').forEach(el =>
+    el.classList.toggle('active', el.dataset.color === current));
+}
+
+// ── API Key ────────────────────────────────────────────────────────────────
 async function checkKeyStatus() {
   try {
     const res  = await fetch('/api/key-status');
     const data = await res.json();
-    const hasKey = data.has_key;
+    const hasKey   = data.has_key;
     const fileName = data.active_file || 'API_Key.txt';
 
     document.getElementById('activeFileName').textContent =
       fileName + (fileName === 'API_Key.txt' ? ' (default)' : '');
-
+    document.getElementById('apiStatus').textContent = hasKey ? '✓ Ready' : '✗ Not configured';
     document.getElementById('keyWarning').classList.toggle('visible', !hasKey);
-    document.getElementById('settingsBtn').classList.toggle('no-key', !hasKey);
-  } catch(e) {
-    // Flask ยังไม่ขึ้น — ไม่แสดงอะไร
+    document.getElementById('ctrlTabBtn').classList.toggle('no-key', !hasKey);
+  } catch (e) { /* Flask not up yet */ }
+}
+
+async function resetKey() {
+  try {
+    const res  = await fetch('/api/reset-key', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('activeFileName').textContent = data.active_file + ' (default)';
+      showToast('รีเซ็ตกลับเป็น API_Key.txt แล้ว');
+      checkKeyStatus();
+    }
+  } catch (e) { showToast('เชื่อมต่อ server ไม่ได้', true); }
+}
+
+async function saveKeyPath() {
+  const path = document.getElementById('keyPathInput').value.trim();
+  if (!path) { showToast('กรุณาระบุ path ของไฟล์', true); return; }
+
+  const btn = document.getElementById('apiSaveBtn');
+  btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
+
+  try {
+    const res  = await fetch('/api/select-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('activeFileName').textContent = data.active_file;
+      showToast(`ใช้ไฟล์: ${data.active_file} แล้ว`);
+      checkKeyStatus();
+      closeModal();
+    } else {
+      showToast('Error: ' + data.error, true);
+    }
+  } catch (e) {
+    showToast('เชื่อมต่อ server ไม่ได้', true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+// ── Load Ollama models ─────────────────────────────────────────────────────
+async function loadModels() {
+  const select = document.getElementById('modelSelect');
+  try {
+    const res    = await fetch('/api/models');
+    const data   = await res.json();
+    const models = data.models || [];
+
+    select.innerHTML = '';
+    if (models.length === 0) {
+      select.innerHTML = '<option value="">ไม่พบโมเดล</option>';
+      return;
+    }
+    models.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.disabled = false;
+  } catch (e) {
+    select.innerHTML = '<option value="">โหลดไม่ได้</option>';
   }
 }
 
@@ -552,42 +767,30 @@ urlInput.addEventListener('input', () => {
   submitBtn.classList.toggle('visible', v.length > 0);
   urlInput.classList.toggle('has-value', v.length > 0);
 });
-
-// ── Submit → SSE ───────────────────────────────────────────────────────────
 submitBtn.addEventListener('click', startAnalysis);
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') startAnalysis(); });
 
+// ── Analyze (SSE) ──────────────────────────────────────────────────────────
 function startAnalysis() {
   const url   = urlInput.value.trim();
   const model = document.getElementById('modelSelect').value;
-  if (!url) return;
+  if (!url || !model) return;
 
-  // ปิด SSE เก่าถ้ามี
   if (activeSSE) { activeSSE.close(); activeSSE = null; }
 
-  // Reset UI
   document.getElementById('loadingArea').classList.add('active');
   document.getElementById('resultsArea').classList.remove('active','visible');
   setProgress(5, 'กำลังเชื่อมต่อ…');
 
-  // เปิด SSE stream
   const endpoint = `/api/analyze?url=${encodeURIComponent(url)}&model=${encodeURIComponent(model)}`;
   const source = new EventSource(endpoint);
   activeSSE = source;
 
   source.onmessage = (e) => {
     const event = JSON.parse(e.data);
-
     if (event.type === 'ping') return;
-
-    if (event.type === 'progress' || event.type === 'status') {
-      setProgress(event.percent ?? null, event.message);
-    }
-
-    if (event.type === 'warning') {
-      showToast(event.message, false);
-    }
-
+    if (event.type === 'progress' || event.type === 'status') setProgress(event.percent ?? null, event.message);
+    if (event.type === 'warning') showToast(event.message);
     if (event.type === 'done') {
       source.close(); activeSSE = null;
       setProgress(100, 'เสร็จแล้ว!');
@@ -596,14 +799,12 @@ function startAnalysis() {
         showResults(event.results);
       }, 400);
     }
-
     if (event.type === 'error') {
       source.close(); activeSSE = null;
       document.getElementById('loadingArea').classList.remove('active');
       showToast('Error: ' + event.message, true);
     }
   };
-
   source.onerror = () => {
     source.close(); activeSSE = null;
     document.getElementById('loadingArea').classList.remove('active');
@@ -613,24 +814,20 @@ function startAnalysis() {
 
 function setProgress(percent, label) {
   if (label)   document.getElementById('loadingLabel').textContent = label;
-  if (percent !== null)
-    document.getElementById('loadingBar').style.width = percent + '%';
+  if (percent !== null) document.getElementById('loadingBar').style.width = percent + '%';
 }
 
-// ── Show Results ───────────────────────────────────────────────────────────
+// ── Results ────────────────────────────────────────────────────────────────
 function showResults(data) {
   currentData = data;
   const total = data.reduce((s, d) => s + d.count, 0);
-
   document.getElementById('statTotal').textContent      = total;
   document.getElementById('statCategories').textContent = data.length;
-  const top = data[0]; // เรียงจากมากสุดแล้วจาก backend
-  document.getElementById('statTop').textContent        = top ? top.count : '—';
+  document.getElementById('statTop').textContent        = data[0] ? data[0].count : '—';
 
   buildChart(data, total);
   buildLegend(data, total);
 
-  // reset detail
   document.getElementById('detailEmpty').style.display = '';
   document.getElementById('detailContent').classList.remove('visible');
   document.getElementById('detailPanel').classList.remove('highlighted');
@@ -650,9 +847,7 @@ function buildChart(data, total) {
       datasets: [{
         data: data.map(d => d.count),
         backgroundColor: PALETTE.slice(0, data.length),
-        borderColor: '#141416',
-        borderWidth: 3,
-        hoverOffset: 14,
+        borderColor: '#141416', borderWidth: 3, hoverOffset: 14,
       }]
     },
     options: {
@@ -660,13 +855,9 @@ function buildChart(data, total) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.parsed} comments (${((ctx.parsed/total)*100).toFixed(1)}%)`
-          },
-          backgroundColor: '#1c1c1f',
-          titleColor: '#e8e8ec', bodyColor: '#6b6b75',
-          borderColor: '#2a2a2e', borderWidth: 1,
-          padding: 12,
+          callbacks: { label: ctx => ` ${ctx.parsed} comments (${((ctx.parsed/total)*100).toFixed(1)}%)` },
+          backgroundColor: '#1c1c1f', titleColor: '#e8e8ec', bodyColor: '#6b6b75',
+          borderColor: '#2a2a2e', borderWidth: 1, padding: 12,
           titleFont: { family: 'DM Mono', size: 12 },
           bodyFont:  { family: 'DM Mono', size: 11 },
         }
@@ -683,8 +874,7 @@ function buildLegend(data, total) {
   data.forEach((d, i) => {
     const pct  = ((d.count / total) * 100).toFixed(1);
     const item = document.createElement('div');
-    item.className    = 'legend-item';
-    item.dataset.index = i;
+    item.className = 'legend-item';
     item.innerHTML = `
       <div class="legend-dot" style="background:${PALETTE[i]}"></div>
       <span class="legend-name">${d.category}</span>
@@ -695,82 +885,18 @@ function buildLegend(data, total) {
 }
 
 function selectCategory(index) {
-  const d     = currentData[index];
-  const color = PALETTE[index];
-
+  const d = currentData[index];
   document.getElementById('detailEmpty').style.display = 'none';
   document.getElementById('detailContent').classList.add('visible');
   document.getElementById('detailCategory').textContent = d.category;
   document.getElementById('detailCount').textContent    = d.count;
   document.getElementById('detailSummary').textContent  = d.summary;
-
   const panel = document.getElementById('detailPanel');
   panel.classList.add('highlighted');
-  panel.style.setProperty('--highlight-color', color);
-
+  panel.style.setProperty('--highlight-color', PALETTE[index]);
   document.querySelectorAll('.legend-item').forEach((el, i) =>
     el.classList.toggle('active', i === index));
 }
-
-// ── Settings modal ─────────────────────────────────────────────────────────
-function openSettings() {
-  document.getElementById('modalBackdrop').classList.add('open');
-}
-
-document.getElementById('settingsBtn').addEventListener('click', openSettings);
-document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('modalBackdrop').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
-});
-
-function closeModal() {
-  document.getElementById('modalBackdrop').classList.remove('open');
-  document.getElementById('keyPathInput').value = '';
-}
-
-// Reset key
-document.getElementById('resetLink').addEventListener('click', async () => {
-  const res  = await fetch('/api/reset-key', { method: 'POST' });
-  const data = await res.json();
-  if (data.success) {
-    document.getElementById('activeFileName').textContent = data.active_file + ' (default)';
-    showToast('รีเซ็ตกลับเป็น API_Key.txt แล้ว');
-    checkKeyStatus();
-  }
-});
-
-// Save new key path
-document.getElementById('modalSave').addEventListener('click', async () => {
-  const path = document.getElementById('keyPathInput').value.trim();
-  if (!path) { showToast('กรุณาระบุ path ของไฟล์', true); return; }
-
-  const btn = document.getElementById('modalSave');
-  btn.disabled = true;
-  btn.textContent = 'กำลังตรวจสอบ…';
-
-  try {
-    const res  = await fetch('/api/select-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path })
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      document.getElementById('activeFileName').textContent = data.active_file;
-      showToast(`ใช้ไฟล์: ${data.active_file} แล้ว`);
-      checkKeyStatus();
-      closeModal();
-    } else {
-      showToast('Error: ' + data.error, true);
-    }
-  } catch(e) {
-    showToast('เชื่อมต่อ server ไม่ได้', true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'บันทึก';
-  }
-});
 
 // ── Toast ──────────────────────────────────────────────────────────────────
 function showToast(msg, isError = false) {
